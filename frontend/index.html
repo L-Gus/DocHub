@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gus Docs - Hub de Produtividade PDF Offline & Seguro</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="assets/favicon.ico">
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/layouts.css">
+    <link rel="stylesheet" href="styles/components.css">
+</head>
+
+<body data-theme="dark">
+<div class="app-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo-section">
+            <img src="assets/logo.svg" alt="Gus Docs Logo" class="logo-icon">
+            <div>
+                <h1 class="app-name">Gus Docs</h1>
+                <p class="app-version">v1.0.0</p>
+            </div>
+        </div>
+
+        <nav class="main-menu">
+            <a class="menu-link active" data-view="merge">
+                <span>Merge</span>
+                <small class="keyboard-hint" title="Atalho: Ctrl+M">Ctrl+M</small>
+            </a>
+            <a class="menu-link" data-view="split">
+                <span>Split</span>
+                <small class="keyboard-hint" title="Atalho: Ctrl+S">Ctrl+S</small>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="system-status">
+                <span class="status-indicator online"></span>
+                <span class="status-text">Offline & Seguro</span>
+            </div>
+            <button id="theme-toggle" class="theme-toggle" title="Alternar tema">
+        <span class="theme-toggle-icon" id="theme-icon">🌙</span>
+        <span class="theme-toggle-label" id="theme-label">Tema</span>
+    </button>
+            <span class="privacy-badge">100% de privacidade</span>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- MERGE VIEW -->
+        <section id="view-merge" class="content-view active">
+            <header class="view-header">
+                <h2>Unir PDFs</h2>
+                <p class="view-description">Combine múltiplos arquivos PDF em um único documento.</p>
+                <div class="view-hint">
+                    <span class="hint-icon">💡</span>
+                    <span>Dica: Arraste os cards para reordenar a sequência do merge</span>
+                </div>
+            </header>
+
+            <!-- DROP ZONE COM CARDS -->
+            <div class="drop-section">
+                <div class="drop-zone" id="merge-drop-zone">
+                    <!-- Cabeçalho da drop zone -->
+                    <div class="drop-zone-header">
+                        <div class="files-info">
+                            <h3>Arquivos carregados</h3>
+                            <div class="files-stats">
+                                <span id="file-count" class="file-count">0 arquivos</span>
+                                <span id="page-count" class="page-count">0 páginas</span>
+                                <span id="size-total" class="size-total">0 MB</span>
+                            </div>
+                        </div>
+                        <button id="clear-all-btn" class="btn btn-icon-text btn-danger" disabled>
+                            <span class="btn-icon">🗑️</span>
+                            Limpar tudo
+                        </button>
+                    </div>
+
+                    <!-- Container dos PDF Cards -->
+                    <div class="pdf-cards-container" id="pdf-cards-container">
+                        <!-- Estado vazio -->
+                        <div class="empty-state" id="empty-state">
+                            <div class="empty-icon">📄</div>
+                            <h4>Nenhum PDF carregado</h4>
+                            <p>Arraste seus arquivos PDF para esta área ou clique abaixo para selecionar</p>
+                        </div>
+                        <!-- PDF Cards serão inseridos aqui via JavaScript -->
+                    </div>
+
+                    <!-- Área inferior para adicionar mais arquivos -->
+                    <div class="add-more-section">
+                        <div class="add-more-dropzone" id="add-more-dropzone">
+                            <div class="add-more-content">
+                                <span class="add-icon">➕</span>
+                                <div class="add-more-text">
+                                    <p class="add-more-title">Arraste mais arquivos para esta área</p>
+                                    <p class="add-more-subtitle">ou selecione clicando aqui</p>
+                                    <p class="add-more-formats">Formatos suportados: PDF • PDF/A</p>
+                                </div>
+                            </div>
+                            <input type="file" id="add-more-input" accept=".pdf" multiple class="file-input-hidden">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONFIGURAÇÃO DE SAÍDA -->
+            <section class="config-panel">
+                <div class="config-header">
+                    <div class="config-title-row">
+                        <h3>Configuração de saída</h3>
+                        <div class="process-steps">
+                            <span class="step active">1. Selecione</span>
+                            <span class="step">2. Configure</span>
+                            <span class="step">3. Execute</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-body">
+                    <!-- Nome do arquivo -->
+                    <div class="config-row main-name-row">
+                        <div class="config-group">
+                            <label for="output-name">Nome do documento</label>
+                            <div class="input-with-action">
+                                <input type="text" id="output-name" placeholder="Ex: Relatório Consolidado">
+                                <button class="btn btn-icon btn-ghost" id="history-toggle" title="Histórico de nomes">
+                                    <span>📋</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <button id="execute-merge-btn" class="btn btn-primary btn-lg" disabled>
+                            <span class="btn-icon">🚀</span>
+                            Executar Merge
+                            <span id="estimated-time" class="estimated-time">~0s</span>
+                        </button>
+                    </div>
+
+                    <!-- Prefixo e Sufixo -->
+                    <div class="config-row prefix-suffix-row">
+                        <div class="config-group">
+                            <label for="output-prefix">Prefixo (opcional)</label>
+                            <input type="text" id="output-prefix" placeholder="Ex: Relatório_">
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="output-suffix">Sufixo (opcional)</label>
+                            <input type="text" id="output-suffix" placeholder="Ex: _vFinal">
+                        </div>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="config-row preset-row">
+                        <div class="config-group">
+                            <label for="preset-select">Presets de nomenclatura</label>
+                            <select id="preset-select">
+                                <option value="">-- Selecionar preset --</option>
+                                <option value="relatorio">Relatório Mensal</option>
+                                <option value="contrato">Contrato Assinado</option>
+                                <option value="fiscal">Documento Fiscal</option>
+                                <option value="legal">Processo Legal</option>
+                                <option value="custom">Personalizado...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label for="same-folder-toggle">
+                                <input type="checkbox" id="same-folder-toggle" checked>
+                                <span>Usar mesma pasta dos arquivos originais</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Diretório de saída -->
+                    <div class="config-row folder-row" id="folder-row">
+                        <div class="config-group">
+                            <label for="output-folder">Diretório de saída</label>
+                            <div class="folder-select-wrapper">
+                                <input type="text" id="output-folder" placeholder="Selecionar diretório" readonly>
+                                <button id="browse-folder-btn" class="btn btn-outline">
+                                    <span class="btn-icon">📁</span>
+                                    Selecionar
+                                </button>
+                                <button id="open-folder-btn" class="btn btn-icon btn-ghost" title="Abrir pasta" disabled>
+                                    <span>↗️</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="config-row preview-row">
+                        <div class="preview-section">
+                            <div class="preview-header">
+                                <h4>Pré-visualização</h4>
+                                <div class="preview-stats">
+                                    <span id="preview-size">~0 MB</span>
+                                    <span id="preview-pages">0 páginas</span>
+                                </div>
+                            </div>
+                            <div class="preview-box" id="filename-preview">
+                                <span class="preview-filename">documento.pdf</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <!-- SPLIT VIEW -->
+        <section id="view-split" class="content-view">
+            <header class="view-header">
+                <h2>Dividir PDF</h2>
+                <p class="view-description">Extraia páginas específicas ou intervalos de um documento PDF.</p>
+                <div class="view-hint">
+                    <span class="hint-icon">💡</span>
+                    <span>Use vírgulas para páginas únicas e hífen para intervalos (ex: 1, 3, 5-10)</span>
+                </div>
+            </header>
+            
+            <!-- Conteúdo do Split será carregado via JS -->
+            <div class="split-placeholder">
+                <p>Funcionalidade de Split em desenvolvimento</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Containers para overlays -->
+    <div id="toast-container"></div>
+    <div id="modal-container"></div>
+
+    <!-- Input principal de arquivo (hidden) -->
+    <input type="file" id="main-file-input" accept=".pdf" multiple hidden>
+
+    <!-- Scripts -->
+    <script src="scripts/app.js" type="module"></script>
+    <script src="scripts/api.js" type="module"></script>
+    <script src="scripts/modules/ui_render.js" type="module"></script>
+    <script src="scripts/modules/view_merge.js" type="module"></script>
+    <script src="scripts/modules/view_split.js" type="module"></script>
+    <script src="scripts/modules/pdf_card.js" type="module"></script>
+    <script src="scripts/modules/theme_manager.js" type="module"></script>
+</div>
+</body>
+</html>
+<!-- SPLIT VIEW -->
+<section id="view-split" class="content-view">
+    <header class="view-header">
+        <h2>Dividir PDF</h2>
+        <p class="view-description">Extraia páginas específicas ou intervalos de um documento PDF.</p>
+        <div class="view-hint">
+            <span class="hint-icon">💡</span>
+            <span>Use vírgulas para páginas únicas e hífen para intervalos (ex: 1, 3, 5-10)</span>
+        </div>
+    </header>
+
+    <div class="split-drop-section">
+        <div class="split-drop-zone" id="split-drop-zone">
+            <div class="split-drop-header">
+                <div class="split-files-info">
+                    <h3>Arquivo para divisão</h3>
+                    <div class="split-files-stats">
+                        <span id="split-file-count" class="file-count">0 arquivos</span>
+                        <span id="split-page-count" class="page-count">0 páginas</span>
+                    </div>
+                </div>
+                <button id="split-clear-btn" class="btn btn-icon-text btn-danger" disabled>
+                    <span class="btn-icon">🗑️</span>
+                    Limpar
+                </button>
+            </div>
+
+            <div class="split-pdf-container" id="split-pdf-container">
+                <div class="split-empty-state" id="split-empty-state">
+                    <div class="split-empty-icon">📄</div>
+                    <h4>Nenhum PDF carregado</h4>
+                    <p>Arraste um arquivo PDF aqui para dividi-lo</p>
+                    <p class="split-empty-note">Apenas um arquivo por vez</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="split-config-panel">
+        <div class="split-config-header">
+            <h3>Configurar divisão</h3>
+            <div class="split-mode-toggle">
+                <button class="split-mode-btn active" data-mode="ranges">Intervalos</button>
+                <button class="split-mode-btn" data-mode="single">Páginas individuais</button>
+            </div>
+        </div>
+
+        <div class="split-config-body">
+            <div class="split-input-section">
+                <label for="split-pages-input">Páginas para extrair</label>
+                <div class="split-input-wrapper">
+                    <input type="text" id="split-pages-input" 
+                           placeholder="Ex: 1-5, 8, 10-15" 
+                           class="split-pages-input">
+                    <div class="split-input-hint" id="split-input-hint">
+                        Digite números ou intervalos separados por vírgula
+                    </div>
+                </div>
+                
+                <div class="split-preview-btn-container">
+                    <button id="preview-split-btn" class="btn btn-outline" disabled>
+                        <span class="btn-icon">👁️</span>
+                        Pré-visualizar divisão
+                    </button>
+                    <span id="split-result-count" class="split-result-count">
+                        0 arquivos serão gerados
+                    </span>
+                </div>
+            </div>
+
+            <div class="split-output-preview" id="split-output-preview">
+                <h4>Arquivos que serão criados:</h4>
+                <div class="split-files-list" id="split-files-list">
+                    <!-- Lista de arquivos será gerada dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="split-output-config">
+        <div class="split-output-header">
+            <h3>Configuração de saída</h3>
+            <div class="split-process-steps">
+                <span class="step">1. Selecione</span>
+                <span class="step active">2. Defina páginas</span>
+                <span class="step">3. Configure saída</span>
+            </div>
+        </div>
+
+        <div class="split-output-body">
+            <div class="split-output-row">
+                <div class="split-output-group">
+                    <label for="split-base-name">Nome base dos arquivos</label>
+                    <input type="text" id="split-base-name" 
+                           placeholder="Ex: Documento" 
+                           class="split-base-input">
+                </div>
+                
+                <div class="split-output-group">
+                    <label for="split-suffix">Sufixo (opcional)</label>
+                    <input type="text" id="split-suffix" 
+                           placeholder="Ex: _dividido" 
+                           class="split-suffix-input">
+                </div>
+            </div>
+
+            <div class="split-output-row">
+                <div class="split-output-group">
+                    <label>Padrão de nomeação automática</label>
+                    <div class="naming-pattern-preview">
+                        <code id="naming-pattern-example">documento.pdf</code>
+                        <span class="pattern-hint">[nome]_p[intervalo].pdf</span>
+                    </div>
+                </div>
+                
+                <div class="split-output-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="split-individual-pages">
+                        <span>Criar um arquivo para cada página</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="split-output-row folder-row">
+                <div class="split-output-group">
+                    <label for="split-output-folder">Diretório de saída</label>
+                    <div class="split-folder-select">
+                        <input type="text" id="split-output-folder" 
+                               placeholder="Selecionar diretório" 
+                               readonly>
+                        <button id="split-browse-folder-btn" class="btn btn-outline">
+                            <span class="btn-icon">📁</span>
+                            Selecionar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="split-action-row">
+                <div class="split-estimate">
+                    <span id="split-estimated-time">~0s estimados</span>
+                    <span id="split-total-size">~0 MB total</span>
+                </div>
+                <button id="execute-split-btn" class="btn btn-primary btn-lg" disabled>
+                    <span class="btn-icon">✂️</span>
+                    Executar Split
+                </button>
+            </div>
+        </div>
+    </section>
+</section>

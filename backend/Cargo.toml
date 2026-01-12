@@ -1,0 +1,24 @@
+# Cargo.toml
+
+[package]
+name = "gus-docs-backend"
+version = "0.1.0"
+edition = "2021"
+description = "Backend Rust para manipulação de PDFs do Gus Docs"
+authors = ["Gus Docs Team"]
+license = "Proprietary"
+
+[dependencies]
+lopdf = "0.38"  # Versão mais recente
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+
+# Dependências específicas para Windows GNU
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "winbase", "handleapi"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

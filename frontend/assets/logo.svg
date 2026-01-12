@@ -1,0 +1,47 @@
+<svg width="48" height="48" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  
+  <defs>
+    <linearGradient id="simpleMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    
+    <linearGradient id="simpleAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Base sólida -->
+  <rect width="240" height="240" rx="40" fill="#0f172a"/>
+  
+  <!-- Container -->
+  <rect x="40" y="40" width="160" height="160" rx="20" fill="url(#simpleMetal)"/>
+  
+  <!-- Documento -->
+  <rect x="60" y="60" width="120" height="120" rx="10" fill="#ffffff"/>
+  
+  <!-- Círculo de ação -->
+  <circle cx="120" cy="120" r="40" fill="url(#simpleAccent)"/>
+  
+  <!-- Símbolo de merge robusto -->
+  <g stroke="#ffffff" stroke-width="8" stroke-linecap="round">
+    <!-- Setas robustas -->
+    <path d="M80,120 L100,120" />
+    <path d="M160,120 L140,120" />
+    <path d="M120,80 L120,100" />
+    <path d="M120,160 L120,140" />
+    
+    <!-- Ponto central -->
+    <circle cx="120" cy="120" r="6" fill="#ffffff"/>
+  </g>
+  
+  <!-- Linhas do documento -->
+  <g stroke="#cbd5e1" stroke-width="2">
+    <line x1="80" y1="90" x2="160" y2="90"/>
+    <line x1="80" y1="110" x2="140" y2="110"/>
+    <line x1="80" y1="130" x2="150" y2="130"/>
+    <line x1="80" y1="150" x2="130" y2="150"/>
+  </g>
+  
+</svg>
