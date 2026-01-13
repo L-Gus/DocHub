@@ -9,7 +9,7 @@
  * - Feedback visual para o usuário
  */
 
-import { app } from '../app.js';
+import { showToast, formatFileSize, getState } from '../app.js';
 
 // ============================================
 // 1. CONSTANTES E CONFIGURAÇÕES
@@ -349,7 +349,7 @@ export function updateSizePreview(sizeInBytes) {
   const sizeElement = document.getElementById(UI_CONFIG.ids.previewSize);
   if (!sizeElement) return;
   
-  const sizeFormatted = app.formatFileSize(sizeInBytes);
+  const sizeFormatted = formatFileSize(sizeInBytes);
   sizeElement.textContent = `~${sizeFormatted}`;
   
   // Destaque visual para mudanças significativas
@@ -968,7 +968,7 @@ export function createTooltip(element, text, options = {}) {
  * Aplica classes de tema a elementos dinâmicos
  */
 export function applyThemeClasses() {
-  const theme = app.state.theme || 'dark';
+  const theme = getState().theme || 'dark';
   
   // Aplicar classes baseadas no tema
   document.querySelectorAll('[data-theme-sensitive]').forEach(el => {
@@ -1199,9 +1199,30 @@ export default {
 
 // Disponibilizar globalmente
 window.uiRender = {
-  ...uiRender,
+  setupDropZone,
+  updateFilenamePreview,
+  updateSizePreview,
+  updatePagesPreview,
+  updateAllPreviews,
+  createModal,
+  showConfirm,
+  showError,
+  showSuccess,
+  setElementState,
+  showEmptyState,
+  hideEmptyState,
+  updateCounters,
+  shakeElement,
+  pulseElement,
+  fadeIn,
+  fadeOut,
+  showSuccessFeedback,
+  createTooltip,
+  applyThemeClasses,
+  updateThemeSensitiveElements,
   init: initUIRender
 };
+
 
 // Inicializar automaticamente
 if (document.readyState === 'loading') {

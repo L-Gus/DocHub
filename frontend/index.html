@@ -221,23 +221,85 @@
             </section>
         </section>
 
-        <!-- SPLIT VIEW -->
-        <section id="view-split" class="content-view">
-            <header class="view-header">
-                <h2>Dividir PDF</h2>
-                <p class="view-description">Extraia páginas específicas ou intervalos de um documento PDF.</p>
-                <div class="view-hint">
-                    <span class="hint-icon">💡</span>
-                    <span>Use vírgulas para páginas únicas e hífen para intervalos (ex: 1, 3, 5-10)</span>
+    <!-- SPLIT VIEW -->
+    <section id="view-split" class="content-view">
+    <header class="view-header">
+        <h2>Dividir PDF</h2>
+        <p class="view-description">
+            Extraia páginas específicas ou intervalos de um documento PDF.
+        </p>
+        <div class="view-hint">
+            <span class="hint-icon">💡</span>
+            <span>Use vírgulas para páginas únicas e hífen para intervalos (ex: 1, 3, 5-10)</span>
+        </div>
+    </header>
+
+    <!-- DROP ZONE SPLIT -->
+    <div class="drop-section">
+        <div class="drop-zone" id="split-drop-zone">
+        <input
+        type="file"
+        id="split-file-input"
+        accept=".pdf"
+        hidden>
+
+            <div class="drop-zone-header">
+                <div class="files-info">
+                    <h3>Arquivo para divisão</h3>
+                    <div class="files-stats">
+                        <span id="split-file-count">0 arquivos</span>
+                        <span id="split-page-count">0 páginas</span>
+                    </div>
                 </div>
-            </header>
-            
-            <!-- Conteúdo do Split será carregado via JS -->
-            <div class="split-placeholder">
-                <p>Funcionalidade de Split em desenvolvimento</p>
+
+                <button id="split-clear-btn" class="btn btn-icon-text btn-danger" disabled>
+                    <span class="btn-icon">🗑️</span>
+                    Limpar
+                </button>
             </div>
-        </section>
-    </main>
+
+            <div class="pdf-cards-container" id="split-pdf-container">
+                <div class="empty-state" id="split-empty-state">
+                    <div class="empty-icon">📄</div>
+                    <h4>Nenhum PDF carregado</h4>
+                    <p>Arraste um arquivo PDF aqui</p>
+                    <small>Apenas um arquivo por vez</small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CONFIGURAÇÃO SPLIT -->
+    <section class="config-panel">
+        <div class="config-header">
+            <h3>Configuração de divisão</h3>
+        </div>
+
+        <div class="config-body">
+
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="split-pages-input">Páginas para extrair</label>
+                    <input
+                        type="text"
+                        id="split-pages-input"
+                        placeholder="Ex: 1-5, 8, 10-15">
+                </div>
+            </div>
+
+            <div class="config-row main-name-row">
+                <button id="execute-split-btn"
+                        class="btn btn-primary btn-lg"
+                        disabled>
+                    <span class="btn-icon">✂️</span>
+                    Executar Split
+                </button>
+            </div>
+
+        </div>
+    </section>
+</section>
 
     <!-- Containers para overlays -->
     <div id="toast-container"></div>
@@ -257,154 +319,3 @@
 </div>
 </body>
 </html>
-<!-- SPLIT VIEW -->
-<section id="view-split" class="content-view">
-    <header class="view-header">
-        <h2>Dividir PDF</h2>
-        <p class="view-description">Extraia páginas específicas ou intervalos de um documento PDF.</p>
-        <div class="view-hint">
-            <span class="hint-icon">💡</span>
-            <span>Use vírgulas para páginas únicas e hífen para intervalos (ex: 1, 3, 5-10)</span>
-        </div>
-    </header>
-
-    <div class="split-drop-section">
-        <div class="split-drop-zone" id="split-drop-zone">
-            <div class="split-drop-header">
-                <div class="split-files-info">
-                    <h3>Arquivo para divisão</h3>
-                    <div class="split-files-stats">
-                        <span id="split-file-count" class="file-count">0 arquivos</span>
-                        <span id="split-page-count" class="page-count">0 páginas</span>
-                    </div>
-                </div>
-                <button id="split-clear-btn" class="btn btn-icon-text btn-danger" disabled>
-                    <span class="btn-icon">🗑️</span>
-                    Limpar
-                </button>
-            </div>
-
-            <div class="split-pdf-container" id="split-pdf-container">
-                <div class="split-empty-state" id="split-empty-state">
-                    <div class="split-empty-icon">📄</div>
-                    <h4>Nenhum PDF carregado</h4>
-                    <p>Arraste um arquivo PDF aqui para dividi-lo</p>
-                    <p class="split-empty-note">Apenas um arquivo por vez</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <section class="split-config-panel">
-        <div class="split-config-header">
-            <h3>Configurar divisão</h3>
-            <div class="split-mode-toggle">
-                <button class="split-mode-btn active" data-mode="ranges">Intervalos</button>
-                <button class="split-mode-btn" data-mode="single">Páginas individuais</button>
-            </div>
-        </div>
-
-        <div class="split-config-body">
-            <div class="split-input-section">
-                <label for="split-pages-input">Páginas para extrair</label>
-                <div class="split-input-wrapper">
-                    <input type="text" id="split-pages-input" 
-                           placeholder="Ex: 1-5, 8, 10-15" 
-                           class="split-pages-input">
-                    <div class="split-input-hint" id="split-input-hint">
-                        Digite números ou intervalos separados por vírgula
-                    </div>
-                </div>
-                
-                <div class="split-preview-btn-container">
-                    <button id="preview-split-btn" class="btn btn-outline" disabled>
-                        <span class="btn-icon">👁️</span>
-                        Pré-visualizar divisão
-                    </button>
-                    <span id="split-result-count" class="split-result-count">
-                        0 arquivos serão gerados
-                    </span>
-                </div>
-            </div>
-
-            <div class="split-output-preview" id="split-output-preview">
-                <h4>Arquivos que serão criados:</h4>
-                <div class="split-files-list" id="split-files-list">
-                    <!-- Lista de arquivos será gerada dinamicamente -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="split-output-config">
-        <div class="split-output-header">
-            <h3>Configuração de saída</h3>
-            <div class="split-process-steps">
-                <span class="step">1. Selecione</span>
-                <span class="step active">2. Defina páginas</span>
-                <span class="step">3. Configure saída</span>
-            </div>
-        </div>
-
-        <div class="split-output-body">
-            <div class="split-output-row">
-                <div class="split-output-group">
-                    <label for="split-base-name">Nome base dos arquivos</label>
-                    <input type="text" id="split-base-name" 
-                           placeholder="Ex: Documento" 
-                           class="split-base-input">
-                </div>
-                
-                <div class="split-output-group">
-                    <label for="split-suffix">Sufixo (opcional)</label>
-                    <input type="text" id="split-suffix" 
-                           placeholder="Ex: _dividido" 
-                           class="split-suffix-input">
-                </div>
-            </div>
-
-            <div class="split-output-row">
-                <div class="split-output-group">
-                    <label>Padrão de nomeação automática</label>
-                    <div class="naming-pattern-preview">
-                        <code id="naming-pattern-example">documento.pdf</code>
-                        <span class="pattern-hint">[nome]_p[intervalo].pdf</span>
-                    </div>
-                </div>
-                
-                <div class="split-output-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="split-individual-pages">
-                        <span>Criar um arquivo para cada página</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="split-output-row folder-row">
-                <div class="split-output-group">
-                    <label for="split-output-folder">Diretório de saída</label>
-                    <div class="split-folder-select">
-                        <input type="text" id="split-output-folder" 
-                               placeholder="Selecionar diretório" 
-                               readonly>
-                        <button id="split-browse-folder-btn" class="btn btn-outline">
-                            <span class="btn-icon">📁</span>
-                            Selecionar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="split-action-row">
-                <div class="split-estimate">
-                    <span id="split-estimated-time">~0s estimados</span>
-                    <span id="split-total-size">~0 MB total</span>
-                </div>
-                <button id="execute-split-btn" class="btn btn-primary btn-lg" disabled>
-                    <span class="btn-icon">✂️</span>
-                    Executar Split
-                </button>
-            </div>
-        </div>
-    </section>
-</section>

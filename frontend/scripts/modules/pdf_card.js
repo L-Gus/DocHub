@@ -1,734 +1,465 @@
 // frontend/scripts/modules/pdf_card.js
 /**
- * Factory de Cards de PDF
- * Gera componentes visuais para arquivos PDF baseados no contexto
+ * PDF Card – Fábrica de Componentes PDF (Refatorado)
+ * Foco: Modularidade, Interatividade e Estados Visuais
  */
 
-import { app } from '../../app.js';
+import { showToast, removePdf } from '../../app.js';
 
-// ============================================
-// 1. CONFIGURAÇÕES E CONSTANTES
-// ============================================
-const CARD_CONFIG = {
+// ===============================
+// CONFIGURAÇÕES E PRESETS
+// ===============================
+const CARD_PRESETS = Object.freeze({
   merge: {
     className: 'pdf-card merge-card',
-    width: '200px',
-    height: '240px',
-    draggable: true,
-    showThumbnail: true,
-    showActions: true,
-    showPageCount: true,
-    showFileSize: true,
-    truncateName: 20,
-    context: 'merge'
-  },
-  splitPreview: {
-    className: 'pdf-card split-preview-card',
-    width: '120px',
-    height: '150px',
-    draggable: false,
-    showThumbnail: true,
-    showActions: false,
-    showPageCount: false,
-    showFileSize: false,
-    truncateName: 15,
-    pageNumber: true,  // Mostra número da página
-    context: 'splitPreview'
+    icon: '📄',
+    showRemove: true,
+    showDragHandle: true,
+    interactive: true,
+    ariaLabel: 'Arquivo PDF para unir'
   },
   splitMain: {
     className: 'pdf-card split-main-card',
-    width: '100%',
-    height: 'auto',
-    draggable: false,
-    showThumbnail: true,
-    showActions: true,
-    showPageCount: true,
-    showFileSize: true,
-    truncateName: false,
-    context: 'splitMain'
+    icon: '✂️',
+    showRemove: true,
+    showDragHandle: false,
+    interactive: true,
+    ariaLabel: 'Arquivo PDF para dividir'
+  },
+  splitPreview: {
+    className: 'pdf-card split-preview-card',
+    icon: '📋',
+    showRemove: false,
+    showDragHandle: false,
+    interactive: false,
+    ariaLabel: 'Pré-visualização da divisão'
   }
-};
+});
 
-// ============================================
-// 2. UTILITÁRIOS
-// ============================================
-function formatFileName(name, maxLength = 20) {
-  if (!maxLength || name.length <= maxLength) return name;
-  return name.substring(0, maxLength - 3) + '...';
+// ===============================
+// UTILITÁRIOS
+// ===============================
+
+/**
+ * Formata tamanho de arquivo para leitura humana
+ * @param {number} bytes - Tamanho em bytes
+ * @returns {string} - Tamanho formatado
+ */
+function _formatFileSize(bytes) {
+  if (typeof bytes !== 'number' || bytes <= 0) return '—';
+  
+  const units = ['Bytes', 'KB', 'MB'];
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  // Limitar a MB (como no MVP)
+  const index = Math.min(i, 2);
+  return `${(bytes / Math.pow(k, index)).toFixed(2)} ${units[index]}`;
 }
 
-function generatePlaceholder(pageNum = null) {
-  const placeholder = document.createElement('div');
-  placeholder.className = 'pdf-thumbnail-placeholder';
-  
-  if (pageNum !== null) {
-    placeholder.innerHTML = `
-      <div class="page-number-badge">${pageNum}</div>
-      <div class="pdf-icon">📄</div>
-    `;
-    placeholder.setAttribute('data-page', pageNum);
-  } else {
-    placeholder.innerHTML = '<div class="pdf-icon">📄</div>';
-  }
-  
-  return placeholder;
+/**
+ * Valida dados do PDF
+ * @param {Object} pdfData - Dados do PDF
+ * @returns {boolean} - Se os dados são válidos
+ */
+function _validatePdfData(pdfData) {
+  return pdfData && 
+         typeof pdfData === 'object' &&
+         pdfData.id && 
+         typeof pdfData.id === 'string' &&
+         pdfData.name && 
+         typeof pdfData.name === 'string';
 }
 
-// ============================================
-// 3. FÁBRICA PRINCIPAL DE CARDS
-// ============================================
-export function createPdfCard(pdfData, context = 'merge', options = {}) {
-  // Configuração baseada no contexto
-  const baseConfig = CARD_CONFIG[context] || CARD_CONFIG.merge;
-  const config = { ...baseConfig, ...options };
+// ===============================
+// FÁBRICA PRINCIPAL
+// ===============================
+
+/**
+ * Cria um card de PDF com base no modo especificado
+ * @param {Object} pdfData - Dados do PDF
+ * @param {string} mode - Modo: 'merge', 'splitMain', 'splitPreview'
+ * @returns {HTMLElement} - Elemento do card
+ */
+export function createPdfCard(pdfData, mode = 'merge') {
+  const preset = CARD_PRESETS[mode] || CARD_PRESETS.merge;
   
-  // Criar elemento principal
+  // Validação rigorosa
+  if (!_validatePdfData(pdfData)) {
+    console.warn('Dados de PDF inválidos para criação de card:', pdfData);
+    return _createFallbackCard(preset);
+  }
+  
+  // Criar elemento base
   const card = document.createElement('div');
-  card.className = config.className;
+  card.className = preset.className;
   card.dataset.pdfId = pdfData.id;
-  card.dataset.context = context;
+  card.draggable = preset.interactive;
+  card.setAttribute('role', 'listitem');
+  card.setAttribute('aria-label', `${preset.ariaLabel}: ${pdfData.name}`);
   
-  // Aplicar estilos dimensionais
-  if (config.width) card.style.width = config.width;
-  if (config.height) card.style.height = config.height;
-  
-  // Adicionar atributos de drag & drop
-  if (config.draggable) {
-    card.draggable = true;
-    card.setAttribute('aria-grabbed', 'false');
+  // Configurar atributos de acessibilidade
+  if (preset.interactive) {
+    card.setAttribute('tabindex', '0');
   }
   
-  // Construir conteúdo do card
-  card.innerHTML = buildCardHTML(pdfData, config);
+  // Renderizar conteúdo
+  _renderCardContent(card, pdfData, preset);
   
-  // Adicionar event listeners
-  addCardEventListeners(card, pdfData, config);
+  // Configurar interatividade
+  if (preset.interactive) {
+    _setupCardInteractivity(card, pdfData, preset);
+  }
   
   // Aplicar estado inicial
-  updateCardState(card, 'normal');
+  _applyInitialCardState(card, pdfData);
   
   return card;
 }
 
-// ============================================
-// 4. CONSTRUÇÃO DO HTML DO CARD
-// ============================================
-function buildCardHTML(pdfData, config) {
-  const fileName = config.truncateName 
-    ? formatFileName(pdfData.name, config.truncateName)
-    : pdfData.name;
+/**
+ * Renderiza o conteúdo do card
+ * @param {HTMLElement} card - Elemento do card
+ * @param {Object} pdfData - Dados do PDF
+ * @param {Object} preset - Configurações do preset
+ */
+function _renderCardContent(card, pdfData, preset) {
+  const fileSize = _formatFileSize(pdfData.size);
+  const pagesText = pdfData.pages ? `${pdfData.pages} pág.` : '';
+  const statusText = pdfData.status ? pdfData.status : '';
   
-  let thumbnailHTML = '';
-  if (config.showThumbnail) {
-    if (pdfData.thumbnail) {
-      thumbnailHTML = `
-        <img src="${pdfData.thumbnail}" 
-             alt="Preview: ${pdfData.name}" 
-             class="pdf-thumbnail"
-             loading="lazy">
-      `;
-    } else {
-      thumbnailHTML = '<div class="pdf-thumbnail-placeholder"></div>';
-    }
-  }
-  
-  let pageInfoHTML = '';
-  if (config.pageNumber && pdfData.pageNumber) {
-    pageInfoHTML = `<div class="page-number">Página ${pdfData.pageNumber}</div>`;
-  } else if (config.showPageCount && pdfData.pages) {
-    pageInfoHTML = `<div class="page-count">${pdfData.pages} pág.</div>`;
-  }
-  
-  let fileSizeHTML = '';
-  if (config.showFileSize && pdfData.size) {
-    fileSizeHTML = `<div class="file-size">${pdfData.size}</div>`;
-  }
-  
-  let actionsHTML = '';
-  if (config.showActions) {
-    actionsHTML = `
-      <div class="card-actions">
-        <button class="btn-card-action btn-remove" 
-                aria-label="Remover arquivo"
-                title="Remover">
-          ×
-        </button>
-        <button class="btn-card-action btn-drag-handle" 
-                aria-label="Arrastar para reordenar"
-                title="Arrastar">
-          ≡
-        </button>
-        ${config.context === 'merge' ? `
-        <button class="btn-card-action btn-preview" 
-                aria-label="Visualizar PDF"
-                title="Visualizar">
-          👁️
-        </button>
-        ` : ''}
+  card.innerHTML = `
+    <div class="pdf-card-body">
+      ${preset.showDragHandle ? 
+        `<div class="pdf-drag-handle" aria-label="Arrastar para reordenar" title="Arrastar">
+          <span class="drag-dots">⋮⋮</span>
+        </div>` : ''}
+      
+      <div class="pdf-thumb" aria-hidden="true">
+        <div class="pdf-thumb-placeholder">${preset.icon}</div>
+        ${pdfData.thumbnail ? 
+          `<img src="${pdfData.thumbnail}" alt="${pdfData.name}" class="pdf-thumb-image" />` : ''}
       </div>
-    `;
-  }
-  
-  return `
-    <div class="card-header">
-      <div class="card-thumbnail">
-        ${thumbnailHTML}
-        ${pdfData.error ? '<div class="error-overlay">⚠️</div>' : ''}
+
+      <div class="pdf-info">
+        <div class="pdf-name card-title" title="${pdfData.name}">
+          ${pdfData.name}
+        </div>
+        <div class="pdf-meta">
+          ${fileSize !== '—' ? `<span class="pdf-size">${fileSize}</span>` : ''}
+          ${pagesText ? `<span class="pdf-pages">• ${pagesText}</span>` : ''}
+          ${statusText ? `<span class="pdf-status">• ${statusText}</span>` : ''}
+        </div>
       </div>
-      ${pageInfoHTML}
-    </div>
-    
-    <div class="card-body">
-      <h4 class="card-title" title="${pdfData.name}">
-        ${fileName}
-      </h4>
-      ${fileSizeHTML}
-    </div>
-    
-    ${actionsHTML}
-    
-    <div class="card-context-menu">
-      <ul>
-        <li data-action="preview">👁️ Visualizar</li>
-        <li data-action="remove">🗑️ Remover</li>
-        <li data-action="showInExplorer">📁 Mostrar no explorador</li>
-        <li data-action="copyPath">📋 Copiar caminho</li>
-        <li data-action="properties">📊 Propriedades</li>
-      </ul>
+
+      ${preset.showRemove ? 
+        `<button class="pdf-remove-btn" title="Remover" aria-label="Remover ${pdfData.name}">
+          <span aria-hidden="true">×</span>
+        </button>` : ''}
     </div>
   `;
 }
 
-// ============================================
-// 5. GERENCIAMENTO DE EVENTOS
-// ============================================
-function addCardEventListeners(card, pdfData, config) {
-  // Hover
-  card.addEventListener('mouseenter', () => {
-    if (card.dataset.state !== 'dragging') {
-      updateCardState(card, 'hover');
-    }
-  });
-  
-  card.addEventListener('mouseleave', () => {
-    if (card.dataset.state !== 'dragging') {
-      updateCardState(card, 'normal');
-    }
-  });
-  
-  // Click para preview
-  if (config.context !== 'splitPreview') {
-    card.addEventListener('click', (e) => {
-      if (!e.target.closest('.card-actions')) {
-        openPdfPreview(pdfData);
-      }
-    });
-  }
-  
-  // Botões de ação
-  const removeBtn = card.querySelector('.btn-remove');
+/**
+ * Configura a interatividade do card
+ * @param {HTMLElement} card - Elemento do card
+ * @param {Object} pdfData - Dados do PDF
+ * @param {Object} preset - Configurações do preset
+ */
+function _setupCardInteractivity(card, pdfData, preset) {
+  // Evento de remoção
+  const removeBtn = card.querySelector('.pdf-remove-btn');
   if (removeBtn) {
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (confirm(`Remover "${pdfData.name}" da lista?`)) {
-        app.removePdf(pdfData.id);
-        card.remove();
-        app.showToast('Arquivo removido', 'info', 2000);
+      _handleCardRemoval(card, pdfData);
+    });
+    
+    // Suporte a teclado (Enter/Space)
+    removeBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        _handleCardRemoval(card, pdfData);
       }
     });
   }
   
-  const previewBtn = card.querySelector('.btn-preview');
-  if (previewBtn) {
-    previewBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openPdfPreview(pdfData);
-    });
+  // Suporte a drag-and-drop (modo merge)
+  if (preset.showDragHandle) {
+    _setupDragAndDrop(card, pdfData);
   }
   
-  // Drag & Drop (apenas para merge)
-  if (config.draggable) {
-    const dragHandle = card.querySelector('.btn-drag-handle');
-    if (dragHandle) {
-      dragHandle.addEventListener('mousedown', startDrag);
-    }
-    
-    card.addEventListener('dragstart', handleDragStart);
-    card.addEventListener('dragend', handleDragEnd);
-    card.addEventListener('dragover', handleDragOver);
-    card.addEventListener('drop', handleDrop);
+  // Estados de hover
+  _setupHoverStates(card);
+  
+  // Foco e acessibilidade
+  _setupFocusStates(card);
+}
+
+/**
+ * Aplica o estado inicial do card
+ * @param {HTMLElement} card - Elemento do card
+ * @param {Object} pdfData - Dados do PDF
+ */
+function _applyInitialCardState(card, pdfData) {
+  // Aplicar estado de erro se necessário
+  if (pdfData.error) {
+    card.classList.add('state-error');
+    card.setAttribute('title', pdfData.error);
+    card.setAttribute('aria-invalid', 'true');
   }
   
-  // Context Menu (clique direito)
-  card.addEventListener('contextmenu', (e) => {
+  // Aplicar estado de carregamento
+  if (pdfData.status === 'processing') {
+    card.classList.add('state-processing');
+  }
+}
+
+/**
+ * Configura drag-and-drop para o card
+ * @param {HTMLElement} card - Elemento do card
+ * @param {Object} pdfData - Dados do PDF
+ */
+function _setupDragAndDrop(card, pdfData) {
+  card.addEventListener('dragstart', (e) => {
+    card.classList.add('state-dragging');
+    e.dataTransfer.setData('text/plain', pdfData.id);
+    e.dataTransfer.effectAllowed = 'move';
+    card.setAttribute('aria-grabbed', 'true');
+  });
+  
+  card.addEventListener('dragend', () => {
+    card.classList.remove('state-dragging');
+    card.setAttribute('aria-grabbed', 'false');
+  });
+  
+  card.addEventListener('dragover', (e) => {
     e.preventDefault();
-    showContextMenu(card, e.clientX, e.clientY, pdfData);
+    card.classList.add('state-drag-over');
   });
   
-  // Fechar context menu ao clicar fora
-  document.addEventListener('click', hideContextMenu);
-}
-
-// ============================================
-// 6. GERENCIAMENTO DE ESTADOS
-// ============================================
-function updateCardState(card, state) {
-  card.dataset.state = state;
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('state-drag-over');
+  });
   
-  // Remover classes de estado anteriores
-  card.classList.remove('state-normal', 'state-hover', 'state-dragging', 'state-selected', 'state-error');
-  
-  // Adicionar nova classe
-  card.classList.add(`state-${state}`);
-  
-  // Atualizar atributos ARIA
-  switch (state) {
-    case 'dragging':
-      card.setAttribute('aria-grabbed', 'true');
-      card.style.opacity = '0.5';
-      break;
-    case 'selected':
-      card.setAttribute('aria-selected', 'true');
-      break;
-    case 'error':
-      card.setAttribute('aria-invalid', 'true');
-      break;
-    default:
-      card.setAttribute('aria-grabbed', 'false');
-      card.setAttribute('aria-selected', 'false');
-      card.style.opacity = '1';
-  }
-}
-
-// ============================================
-// 7. DRAG & DROP IMPLEMENTATION
-// ============================================
-let dragSrcEl = null;
-
-function startDrag(e) {
-  // Esta função é apenas para o botão de drag handle
-  if (dragSrcEl) return;
-  
-  const card = e.target.closest('.pdf-card');
-  if (!card) return;
-  
-  dragSrcEl = card;
-  updateCardState(card, 'dragging');
-  
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', card.outerHTML);
-  e.dataTransfer.setData('text/plain', card.dataset.pdfId);
-  
-  // Adicionar classe global durante o drag
-  document.body.classList.add('dragging-active');
-}
-
-function handleDragStart(e) {
-  dragSrcEl = this;
-  updateCardState(this, 'dragging');
-  
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', this.outerHTML);
-  e.dataTransfer.setData('text/plain', this.dataset.pdfId);
-  
-  // Adicionar classe global durante o drag
-  document.body.classList.add('dragging-active');
-}
-
-function handleDragEnd() {
-  if (dragSrcEl) {
-    updateCardState(dragSrcEl, 'normal');
-  }
-  dragSrcEl = null;
-  
-  // Remover classe global
-  document.body.classList.remove('dragging-active');
-  
-  // Remover todas as marcações de drop target
-  document.querySelectorAll('.drop-target').forEach(el => {
-    el.classList.remove('drop-target');
+  card.addEventListener('drop', (e) => {
+    e.preventDefault();
+    card.classList.remove('state-drag-over');
   });
 }
 
-function handleDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault(); // Permite drop
-  }
+/**
+ * Configura estados de hover
+ * @param {HTMLElement} card - Elemento do card
+ */
+function _setupHoverStates(card) {
+  card.addEventListener('mouseenter', () => {
+    card.classList.add('state-hover');
+  });
   
-  e.dataTransfer.dropEffect = 'move';
-  
-  // Adicionar indicação visual de drop target
-  if (this !== dragSrcEl && this.classList.contains('pdf-card')) {
-    this.classList.add('drop-target');
-  }
-  
-  return false;
+  card.addEventListener('mouseleave', () => {
+    card.classList.remove('state-hover');
+  });
 }
 
-function handleDragLeave(e) {
-  // Remover indicação de drop target
-  if (this.classList.contains('pdf-card')) {
-    this.classList.remove('drop-target');
-  }
+/**
+ * Configura estados de foco
+ * @param {HTMLElement} card - Elemento do card
+ */
+function _setupFocusStates(card) {
+  card.addEventListener('focus', () => {
+    card.classList.add('state-focused');
+  });
+  
+  card.addEventListener('blur', () => {
+    card.classList.remove('state-focused');
+  });
 }
 
-function handleDrop(e) {
-  e.stopPropagation();
-  e.preventDefault();
+/**
+ * Manipula a remoção do card
+ * @param {HTMLElement} card - Elemento do card
+ * @param {Object} pdfData - Dados do PDF
+ */
+function _handleCardRemoval(card, pdfData) {
+  const success = removePdf(pdfData.id);
   
-  // Remover indicação de drop target
-  if (this.classList.contains('pdf-card')) {
-    this.classList.remove('drop-target');
-  }
-  
-  if (dragSrcEl && dragSrcEl !== this) {
-    // Obter containers
-    const srcContainer = dragSrcEl.parentNode;
-    const targetContainer = this.parentNode;
+  if (success) {
+    // Animar remoção
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(-20px)';
     
-    // Verificar se estão no mesmo container
-    if (srcContainer === targetContainer) {
-      // Reordenação no mesmo container
-      const allCards = Array.from(srcContainer.children)
-        .filter(el => el.classList.contains('pdf-card') && el !== dragSrcEl);
-      
-      const targetIndex = allCards.indexOf(this);
-      
-      if (targetIndex !== -1) {
-        // Determinar posição de inserção
-        if (dragSrcEl.compareDocumentPosition(this) & Node.DOCUMENT_POSITION_FOLLOWING) {
-          // dragSrcEl está antes do this, inserir antes
-          srcContainer.insertBefore(dragSrcEl, this);
-        } else {
-          // dragSrcEl está depois do this, inserir depois
-          srcContainer.insertBefore(dragSrcEl, this.nextSibling);
-        }
-        
-        // Atualizar estado no app
-        updatePdfOrder(srcContainer);
-        
-        // Feedback visual
-        app.showToast('Ordem atualizada', 'success', 1500);
-      }
-    }
-  }
-  
-  return false;
-}
-
-function updatePdfOrder(container) {
-  const pdfIds = Array.from(container.querySelectorAll('.pdf-card'))
-    .map(card => card.dataset.pdfId)
-    .filter(id => id);
-  
-  // Aqui você pode atualizar a ordem no state global se necessário
-  console.log('Nova ordem dos PDFs:', pdfIds);
-  
-  // Disparar evento para outros módulos
-  const event = new CustomEvent('pdfOrderUpdated', {
-    detail: { pdfIds }
-  });
-  document.dispatchEvent(event);
-}
-
-// ============================================
-// 8. CONTEXT MENU
-// ============================================
-let currentContextMenu = null;
-
-function showContextMenu(card, x, y, pdfData) {
-  // Remover menu anterior
-  hideContextMenu();
-  
-  const menu = card.querySelector('.card-context-menu');
-  if (!menu) return;
-  
-  // Posicionar menu
-  menu.style.display = 'block';
-  menu.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
-  menu.style.top = `${Math.min(y, window.innerHeight - 250)}px`;
-  menu.style.position = 'fixed';
-  menu.style.zIndex = '1000';
-  
-  // Adicionar event listeners aos itens do menu
-  menu.querySelectorAll('li').forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleContextMenuAction(item.dataset.action, pdfData);
-      hideContextMenu();
-    });
-  });
-  
-  currentContextMenu = menu;
-}
-
-function hideContextMenu() {
-  if (currentContextMenu) {
-    currentContextMenu.style.display = 'none';
-    currentContextMenu = null;
+    setTimeout(() => {
+      card.remove();
+    }, 300);
+    
+    showToast(`"${pdfData.name}" removido`, 'info', 2000);
+  } else {
+    showToast('Erro ao remover arquivo', 'error', 3000);
   }
 }
 
-function handleContextMenuAction(action, pdfData) {
-  switch (action) {
-    case 'preview':
-      openPdfPreview(pdfData);
-      break;
-    case 'remove':
-      if (confirm(`Remover "${pdfData.name}"?`)) {
-        app.removePdf(pdfData.id);
-        app.showToast('Arquivo removido', 'info', 2000);
-      }
-      break;
-    case 'showInExplorer':
-      // Integrar com Electron para abrir explorador
-      if (window.electronAPI) {
-        window.electronAPI.showItemInFolder(pdfData.path);
-      } else {
-        app.showToast('Funcionalidade disponível apenas na versão desktop', 'warning', 3000);
-      }
-      break;
-    case 'copyPath':
-      navigator.clipboard.writeText(pdfData.path)
-        .then(() => app.showToast('Caminho copiado!', 'success', 1500))
-        .catch(err => {
-          console.error('Erro ao copiar caminho:', err);
-          app.showToast('Erro ao copiar caminho', 'error', 2000);
-        });
-      break;
-    case 'properties':
-      showPdfProperties(pdfData);
-      break;
-    default:
-      console.warn(`Ação de contexto desconhecida: ${action}`);
-  }
-}
-
-// ============================================
-// 9. FUNÇÕES AUXILIARES
-// ============================================
-function openPdfPreview(pdfData) {
-  app.showToast(`Abrindo visualização: ${pdfData.name}`, 'info', 2000);
-  
-  // Criar modal de preview (implementação básica)
-  const modal = document.createElement('div');
-  modal.className = 'pdf-preview-modal';
-  modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  `;
-  
-  modal.innerHTML = `
-    <div class="preview-content" style="
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 90vw;
-      max-height: 90vh;
-      overflow: auto;
-    ">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3 style="margin: 0;">${pdfData.name}</h3>
-        <button class="close-preview" style="
-          background: none;
-          border: none;
-          font-size: 24px;
-          cursor: pointer;
-        ">×</button>
+/**
+ * Cria um card de fallback
+ * @param {Object} preset - Configurações do preset
+ * @returns {HTMLElement} - Elemento do card
+ */
+function _createFallbackCard(preset) {
+  const card = document.createElement('div');
+  card.className = `${preset.className} state-error`;
+  card.innerHTML = `
+    <div class="pdf-card-body">
+      <div class="pdf-thumb" aria-hidden="true">
+        <div class="pdf-thumb-placeholder">❌</div>
       </div>
-      <div class="preview-body">
-        <p>Preview do PDF: ${pdfData.name}</p>
-        <p>Páginas: ${pdfData.pages || 'N/A'}</p>
-        <p>Tamanho: ${pdfData.size || 'N/A'}</p>
-        ${pdfData.thumbnail ? `
-        <div style="text-align: center; margin-top: 20px;">
-          <img src="${pdfData.thumbnail}" alt="Preview" style="max-width: 100%; max-height: 60vh;">
-          <p><small>Preview da primeira página</small></p>
+      <div class="pdf-info">
+        <div class="pdf-name card-title">Arquivo inválido</div>
+        <div class="pdf-meta">
+          <span class="pdf-size">—</span>
         </div>
-        ` : ''}
       </div>
     </div>
   `;
-  
-  document.body.appendChild(modal);
-  
-  // Fechar modal
-  const closeBtn = modal.querySelector('.close-preview');
-  closeBtn.addEventListener('click', () => {
-    modal.remove();
-  });
-  
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.remove();
-    }
-  });
-  
-  // Fechar com ESC
-  const handleEsc = (e) => {
-    if (e.key === 'Escape') {
-      modal.remove();
-      document.removeEventListener('keydown', handleEsc);
-    }
-  };
-  document.addEventListener('keydown', handleEsc);
-  
-  console.log('Preview PDF:', pdfData);
+  return card;
 }
 
-function showPdfProperties(pdfData) {
-  // Modal com propriedades detalhadas
-  const props = `
-    Nome: ${pdfData.name}
-    Caminho: ${pdfData.path}
-    Páginas: ${pdfData.pages || 'N/A'}
-    Tamanho: ${pdfData.size || 'N/A'}
-    Data: ${pdfData.modifiedDate || 'N/A'}
-    ID: ${pdfData.id || 'N/A'}
-  `;
-  
-  const modal = document.createElement('div');
-  modal.className = 'properties-modal';
-  modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  `;
-  
-  modal.innerHTML = `
-    <div style="
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      max-width: 500px;
-      width: 90%;
-    ">
-      <h3 style="margin-top: 0;">Propriedades do PDF</h3>
-      <pre style="
-        background: #f5f5f5;
-        padding: 15px;
-        border-radius: 5px;
-        white-space: pre-wrap;
-        font-family: monospace;
-      ">${props}</pre>
-      <div style="text-align: right; margin-top: 20px;">
-        <button class="close-props" style="
-          padding: 8px 16px;
-          background: var(--color-primary);
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        ">Fechar</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  
-  modal.querySelector('.close-props').addEventListener('click', () => {
-    modal.remove();
-  });
-  
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.remove();
-    }
-  });
-}
+// ===============================
+// FUNÇÕES AUXILIARES EXPORTADAS
+// ===============================
 
-// ============================================
-// 10. FUNÇÕES PÚBLICAS PARA OUTROS MÓDULOS
-// ============================================
+/**
+ * Cria um card para modo Merge
+ * @param {Object} pdfData - Dados do PDF
+ * @returns {HTMLElement} - Elemento do card
+ */
 export function createMergeCard(pdfData) {
   return createPdfCard(pdfData, 'merge');
 }
 
-export function createSplitPreviewCard(pdfData, pageNum) {
-  return createPdfCard({
-    ...pdfData,
-    pageNumber: pageNum,
-    name: `Página ${pageNum}`
-  }, 'splitPreview');
-}
-
+/**
+ * Cria um card para modo Split (arquivo principal)
+ * @param {Object} pdfData - Dados do PDF
+ * @returns {HTMLElement} - Elemento do card
+ */
 export function createSplitMainCard(pdfData) {
   return createPdfCard(pdfData, 'splitMain');
 }
 
-export function updateCardThumbnail(cardId, thumbnailUrl) {
-  const card = document.querySelector(`[data-pdf-id="${cardId}"]`);
-  if (card) {
-    const thumbnail = card.querySelector('.pdf-thumbnail');
-    if (thumbnail) {
-      thumbnail.src = thumbnailUrl;
-    } else {
-      const placeholder = card.querySelector('.pdf-thumbnail-placeholder');
-      if (placeholder) {
-        placeholder.innerHTML = `<img src="${thumbnailUrl}" class="pdf-thumbnail" loading="lazy">`;
-      }
-    }
-  }
+/**
+ * Cria um card para modo Split (pré-visualização)
+ * @param {Object} pdfData - Dados do PDF
+ * @returns {HTMLElement} - Elemento do card
+ */
+export function createSplitPreviewCard(pdfData) {
+  return createPdfCard(pdfData, 'splitPreview');
 }
 
-export function markCardAsError(cardId, errorMessage) {
-  const card = document.querySelector(`[data-pdf-id="${cardId}"]`);
-  if (card) {
-    updateCardState(card, 'error');
-    card.title = `Erro: ${errorMessage}`;
+/**
+ * Atualiza o status de um card existente
+ * @param {HTMLElement} cardElement - Elemento do card
+ * @param {string} status - Novo status
+ * @param {string|null} error - Mensagem de erro (opcional)
+ */
+export function updateCardStatus(cardElement, status, error = null) {
+  if (!cardElement || !cardElement.classList.contains('pdf-card')) {
+    console.warn('Elemento de card inválido');
+    return;
+  }
+  
+  // Atualizar elemento de status
+  let statusElement = cardElement.querySelector('.pdf-status');
+  if (!statusElement) {
+    const metaElement = cardElement.querySelector('.pdf-meta');
+    if (metaElement) {
+      statusElement = document.createElement('span');
+      statusElement.className = 'pdf-status';
+      metaElement.appendChild(statusElement);
+    }
+  }
+  
+  if (statusElement) {
+    statusElement.textContent = `• ${status}`;
+  }
+  
+  // Gerenciar estados visuais
+  if (error) {
+    cardElement.classList.add('state-error');
+    cardElement.classList.remove('state-processing');
+    cardElement.setAttribute('title', error);
+    cardElement.setAttribute('aria-invalid', 'true');
+  } else {
+    cardElement.classList.remove('state-error');
+    cardElement.removeAttribute('title');
+    cardElement.removeAttribute('aria-invalid');
     
-    // Adicionar overlay de erro
-    const thumbnail = card.querySelector('.card-thumbnail');
-    if (thumbnail && !thumbnail.querySelector('.error-overlay')) {
-      const errorOverlay = document.createElement('div');
-      errorOverlay.className = 'error-overlay';
-      errorOverlay.textContent = '⚠️';
-      errorOverlay.title = errorMessage;
-      thumbnail.appendChild(errorOverlay);
+    // Estado de processamento
+    if (status === 'processing') {
+      cardElement.classList.add('state-processing');
+    } else {
+      cardElement.classList.remove('state-processing');
     }
   }
 }
 
-export function clearAllCards() {
-  document.querySelectorAll('.pdf-card').forEach(card => {
-    card.remove();
+/**
+ * Remove todos os cards da interface
+ * @param {string} containerSelector - Seletor do container (opcional)
+ */
+export function clearAllCards(containerSelector = null) {
+  const cards = containerSelector 
+    ? document.querySelectorAll(`${containerSelector} .pdf-card`)
+    : document.querySelectorAll('.pdf-card');
+  
+  cards.forEach(card => {
+    // Animar remoção
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.9)';
+    
+    setTimeout(() => {
+      if (card.parentNode) {
+        card.parentNode.removeChild(card);
+      }
+    }, 200);
   });
 }
 
-// ============================================
-// 11. INICIALIZAÇÃO E EXPORT
-// ============================================
-// Exportar funções principais
-export default {
-  createMergeCard,
-  createSplitPreviewCard,
-  createSplitMainCard,
-  updateCardThumbnail,
-  markCardAsError,
-  clearAllCards
-};
-
-// Adicionar utilitários ao objeto global para debug
-if (process.env.NODE_ENV === 'development') {
-  window.pdfCardUtils = {
-    formatFileName,
-    generatePlaceholder,
-    updateCardState,
-    updatePdfOrder
-  };
+/**
+ * Obtém o ID do PDF de um card
+ * @param {HTMLElement} cardElement - Elemento do card
+ * @returns {string|null} - ID do PDF
+ */
+export function getCardPdfId(cardElement) {
+  return cardElement?.dataset?.pdfId || null;
 }
+
+/**
+ * Verifica se um card está em estado de erro
+ * @param {HTMLElement} cardElement - Elemento do card
+ * @returns {boolean} - Se o card está em erro
+ */
+export function isCardInErrorState(cardElement) {
+  return cardElement?.classList?.contains('state-error') || false;
+}
+
+// ===============================
+// EXPORTAÇÕES PRINCIPAIS
+// ===============================
+
+export default {
+  // Fábrica principal
+  createPdfCard,
+  
+  // Fábricas específicas
+  createMergeCard,
+  createSplitMainCard,
+  createSplitPreviewCard,
+  
+  // Manipulação de cards
+  updateCardStatus,
+  clearAllCards,
+  getCardPdfId,
+  isCardInErrorState,
+  
+  // Utilitários
+  formatFileSize: _formatFileSize
+};

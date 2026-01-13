@@ -1,11 +1,8 @@
 // frontend/scripts/app.js
 /**
  * Gus Docs - Gerenciador de Estado e Router Principal
- * 
- * Este arquivo gerencia:
- * - Estado global da aplicação
- * - Navegação entre telas (SPA-like)
- * - Inicialização dos módulos
+ * Implementação do padrão "Frontend Burro"
+ * Núcleo de orquestração que delega processamento pesado ao Rust
  */
 
 // ============================================
@@ -37,7 +34,7 @@ const CONFIG = {
 };
 
 // ============================================
-// 2. ESTADO GLOBAL
+// 2. ESTADO GLOBAL (FONTE DA VERDADE)
 // ============================================
 const state = {
   // Navegação
@@ -45,7 +42,7 @@ const state = {
   previousView: null,
   
   // Dados dos PDFs
-  pdfs: [],
+  pdfs: [], // Array de objetos PDF: {id, file, name, size, pages, status}
   
   // Configurações gerais
   outputDir: '',
@@ -65,24 +62,24 @@ const state = {
   
   // Configurações específicas por view
   mergeSettings: {
-    sortBy: 'name',
+    sortBy: 'name', // 'name', 'date', 'size'
     autoNaming: true,
     preserveOrder: true
   },
   splitSettings: {
     pageRanges: '',
-    outputFormat: 'separate',
+    outputFormat: 'separate', // 'separate', 'ranges', 'every'
     namingPattern: '[name]_p[pages]'
   }
 };
 
 // ============================================
-// 3. ELEMENTOS DOM (cacheados após DOM ready)
+// 3. ELEMENTOS DOM (CACHEADOS APÓS DOM READY)
 // ============================================
 let DOM = {};
 
 /**
- * Cacheia elementos DOM importantes
+ * Cacheia elementos DOM essenciais
  */
 function cacheDOMElements() {
   try {
@@ -99,8 +96,14 @@ function cacheDOMElements() {
       pageTitle: document.querySelector('.view-header h2'),
       viewDescription: document.querySelector('.view-description'),
       
+      // Navegação
+      menuLinks: document.querySelectorAll('.menu-link'),
+      themeToggle: document.getElementById('theme-toggle'),
+      themeIcon: document.getElementById('theme-icon'),
+      themeLabel: document.getElementById('theme-label'),
+      
       // Loading overlay
-      loadingOverlay: document.getElementById('global-loading-overlay'),
+      loadingOverlay: null,
       loadingText: null,
       
       // Notificações/toasts
@@ -122,13 +125,7 @@ function cacheDOMElements() {
       splitFileCount: document.getElementById('split-file-count'),
       splitPageCount: document.getElementById('split-page-count'),
       splitClearBtn: document.getElementById('split-clear-btn'),
-      executeSplitBtn: document.getElementById('execute-split-btn'),
-      
-      // Navegação
-      menuLinks: document.querySelectorAll('.menu-link'),
-      themeToggle: document.getElementById('theme-toggle'),
-      themeIcon: document.getElementById('theme-icon'),
-      themeLabel: document.getElementById('theme-label')
+      executeSplitBtn: document.getElementById('execute-split-btn')
     };
     
     console.log('✅ Elementos DOM cacheados');
@@ -138,12 +135,40 @@ function cacheDOMElements() {
 }
 
 // ============================================
-// 4. ROTEADOR DE VIEWS (SPA)
+// 4. GERENCIAMENTO DE ESTADO
 // ============================================
 
 /**
- * Alterna entre as views da aplicação
+ * Atualiza o estado global (dispara evento obrigatório)
+ * @param {Object} newState - Novos valores para o estado
+ * @returns {Object} - Estado atualizado
+ */
+function updateState(newState) {
+  const oldState = { ...state };
+  Object.assign(state, newState);
+  
+  // Disparar evento obrigatório de estado atualizado
+  const event = new CustomEvent('stateUpdated', { 
+    detail: { 
+      newState: { ...state },
+      oldState,
+      changedKeys: Object.keys(newState)
+    }
+  });
+  document.dispatchEvent(event);
+  
+  console.log('📊 Estado atualizado:', Object.keys(newState));
+  return state;
+}
+
+// ============================================
+// 5. ROTEAMENTO SPA E NAVEGAÇÃO
+// ============================================
+
+/**
+ * Alterna entre as views da aplicação (SPA-like)
  * @param {string} view - Nome da view ('merge' ou 'split')
+ * @returns {boolean} - Sucesso da operação
  */
 function switchView(view) {
   // Validar view
@@ -161,8 +186,11 @@ function switchView(view) {
   console.log(`🔄 Alternando view: ${state.currentView} → ${view}`);
   
   // Salvar view anterior
-  state.previousView = state.currentView;
-  state.currentView = view;
+  const previousView = state.currentView;
+  updateState({ 
+    currentView: view, 
+    previousView: previousView 
+  });
   
   // Atualizar navegação
   updateNavigation(view);
@@ -176,8 +204,8 @@ function switchView(view) {
   // Atualizar URL hash
   updateUrlHash(view);
   
-  // Disparar evento
-  dispatchViewChangedEvent(view);
+  // Disparar evento de mudança de view
+  dispatchViewChangedEvent(view, previousView);
   
   return true;
 }
@@ -239,11 +267,12 @@ function updateUrlHash(view) {
 /**
  * Dispara evento de mudança de view
  */
-function dispatchViewChangedEvent(view) {
+function dispatchViewChangedEvent(view, previousView) {
   const event = new CustomEvent('viewChanged', { 
     detail: { 
       view,
-      previousView: state.previousView 
+      previousView,
+      timestamp: new Date().toISOString()
     }
   });
   document.dispatchEvent(event);
@@ -265,33 +294,59 @@ function handleHashChange() {
 }
 
 // ============================================
-// 5. GERENCIAMENTO DE ESTADO
+// 6. GERENCIAMENTO DE ARQUIVOS E VALIDAÇÃO
 // ============================================
 
 /**
- * Atualiza o estado global
- * @param {Object} newState - Novos valores para o estado
+ * Valida um arquivo PDF
+ * @param {File} file - Objeto File do input/drag-and-drop
+ * @returns {Object} - {valid: boolean, error: string|null}
  */
-function updateState(newState) {
-  const oldState = { ...state };
-  Object.assign(state, newState);
+function validatePdfFile(file) {
+  if (!file) return { valid: false, error: 'Arquivo inválido' };
   
-  // Disparar evento de estado atualizado
-  const event = new CustomEvent('stateUpdated', { 
-    detail: { 
-      newState: { ...state },
-      oldState,
-      changedKeys: Object.keys(newState)
-    }
-  });
-  document.dispatchEvent(event);
+  // Verificar tipo
+  const isValidType = CONFIG.supportedFileTypes.some(type => 
+    file.name.toLowerCase().endsWith(type.toLowerCase())
+  );
   
-  console.log('📊 Estado atualizado:', Object.keys(newState));
-  return state;
+  if (!isValidType) {
+    return { 
+      valid: false, 
+      error: `Tipo de arquivo não suportado. Use: ${CONFIG.supportedFileTypes.join(', ')}` 
+    };
+  }
+  
+  // Verificar tamanho
+  if (file.size > CONFIG.maxFileSize) {
+    return { 
+      valid: false, 
+      error: `Arquivo muito grande (max: ${formatFileSize(CONFIG.maxFileSize)})` 
+    };
+  }
+  
+  return { valid: true, error: null };
 }
 
 /**
- * Adiciona um PDF ao estado
+ * Extrai informações básicas de um arquivo
+ * @param {File} file - Objeto File
+ * @returns {Object} - Informações do arquivo
+ */
+function extractFileInfo(file) {
+  return {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: file.lastModified,
+    path: file.path || file.name
+  };
+}
+
+/**
+ * Adiciona um PDF ao estado global
+ * @param {Object} pdf - Objeto PDF
+ * @returns {string|null} - ID do PDF ou null em caso de erro
  */
 function addPdf(pdf) {
   if (!pdf || !pdf.name) {
@@ -306,6 +361,7 @@ function addPdf(pdf) {
   
   // Adicionar timestamp
   pdf.addedAt = new Date().toISOString();
+  pdf.status = 'pending'; // pending, processing, ready, error
   
   const newPdfs = [...state.pdfs, pdf];
   updateState({ pdfs: newPdfs });
@@ -319,6 +375,8 @@ function addPdf(pdf) {
 
 /**
  * Remove um PDF do estado
+ * @param {string} pdfId - ID do PDF
+ * @returns {boolean} - Sucesso da operação
  */
 function removePdf(pdfId) {
   const index = state.pdfs.findIndex(pdf => pdf.id === pdfId);
@@ -340,9 +398,10 @@ function removePdf(pdfId) {
 
 /**
  * Limpa todos os PDFs
+ * @returns {number} - Quantidade de PDFs removidos
  */
 function clearPdfs() {
-  if (state.pdfs.length === 0) return;
+  if (state.pdfs.length === 0) return 0;
   
   const count = state.pdfs.length;
   updateState({ pdfs: [] });
@@ -397,140 +456,137 @@ function formatFileSize(bytes) {
 }
 
 // ============================================
-// 6. GERENCIAMENTO DE TEMA
+// 7. INTEGRAÇÃO COM MÓDULOS (ECOSSISTEMA)
 // ============================================
 
 /**
- * Inicializa o tema da aplicação
+ * Inicializa a integração com módulos externos
  */
-function initTheme() {
-  console.log('🎨 Inicializando tema...');
+function initModulesIntegration() {
+  console.log('🧩 Inicializando integração com módulos...');
   
+  // 1. ThemeManager
   if (window.gusThemeManager) {
-    const tm = window.gusThemeManager;
-    
-    // Se não estiver inicializado, inicializar
-    if (!tm.isInitialized) {
-      tm.init();
-    }
-    
-    // Sincronizar com estado global
-    state.theme = tm.resolvedTheme;
+    console.log('🎨 Inicializando ThemeManager...');
+    window.gusThemeManager.init();
+    updateState({ theme: window.gusThemeManager.resolvedTheme });
     document.body.setAttribute('data-theme', state.theme);
-    
-    // Configurar listener para mudanças de tema
-    tm.on('themeChanged', handleThemeChange);
-    
-    updateThemeToggleUI();
-    console.log(`✅ Tema inicializado via ThemeManager: ${state.theme}`);
   } else {
-    // Fallback: usar localStorage ou preferência do sistema
-    console.warn('ThemeManager não disponível, usando fallback');
-    applyThemeFallback();
+    console.warn('⚠️ ThemeManager não disponível, usando fallback');
+    initThemeFallback();
   }
+  
+  // 2. UIRender
+  if (window.uiRender) {
+    console.log('🎭 Inicializando UIRender...');
+    window.uiRender.init();
+  } else {
+    console.warn('⚠️ UIRender não disponível');
+  }
+  
+  // 3. Configurar listeners para carregamento lazy das views
+  document.addEventListener('viewChanged', handleViewChangedForLazyLoading);
 }
 
 /**
- * Aplica fallback de tema
+ * Fallback para tema (se ThemeManager não estiver disponível)
  */
-function applyThemeFallback() {
+function initThemeFallback() {
   try {
     const savedTheme = localStorage.getItem(CONFIG.storageKeys.theme);
     if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
-      state.theme = savedTheme;
+      updateState({ theme: savedTheme });
     } else {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      state.theme = prefersDark ? 'dark' : 'light';
+      updateState({ theme: prefersDark ? 'dark' : 'light' });
     }
     
     document.body.setAttribute('data-theme', state.theme);
     localStorage.setItem(CONFIG.storageKeys.theme, state.theme);
-    
-    updateThemeToggleUI();
-    console.log(`✅ Tema fallback aplicado: ${state.theme}`);
   } catch (error) {
-    console.error('❌ Erro ao aplicar fallback de tema:', error);
-    state.theme = CONFIG.defaultTheme;
+    console.error('❌ Erro no fallback de tema:', error);
+    updateState({ theme: CONFIG.defaultTheme });
     document.body.setAttribute('data-theme', CONFIG.defaultTheme);
   }
 }
 
 /**
- * Manipula mudanças de tema
+ * Manipula mudanças de view para carregamento lazy
  */
-function handleThemeChange(data) {
-  if (data && data.resolvedTheme) {
-    state.theme = data.resolvedTheme;
-    updateState({ theme: state.theme });
-    updateThemeToggleUI();
-    
-    console.log(`🎨 Tema alterado para: ${state.theme}`);
-    
-    // Disparar evento global
-    const event = new CustomEvent('appThemeChanged', { 
-      detail: { theme: state.theme }
-    });
-    document.dispatchEvent(event);
-  }
-}
-
-/**
- * Atualiza a UI do botão de alternar tema
- */
-function updateThemeToggleUI() {
-  if (!DOM.themeIcon || !state.theme) return;
+function handleViewChangedForLazyLoading(event) {
+  const view = event.detail.view;
   
-  const isDark = state.theme === 'dark';
-  const themeManager = window.gusThemeManager;
+  console.log(`📦 Verificando carregamento lazy para view: ${view}`);
   
-  if (themeManager) {
-    DOM.themeIcon.textContent = themeManager.getThemeIcon();
-  } else {
-    DOM.themeIcon.textContent = isDark ? '🌙' : '☀️';
+  // Aqui você pode implementar carregamento dinâmico de módulos
+  // Exemplo com dynamic imports (ES6 modules):
+  /*
+  if (view === 'merge' && !window.mergeViewLoaded) {
+    import('./view_merge.js')
+      .then(module => {
+        window.mergeViewLoaded = true;
+        module.init();
+      })
+      .catch(error => console.error('Erro ao carregar merge view:', error));
   }
-  
-  if (DOM.themeLabel) {
-    DOM.themeLabel.textContent = isDark ? 'Escuro' : 'Claro';
-  }
-  
-  if (DOM.themeToggle) {
-    DOM.themeToggle.title = isDark 
-      ? 'Tema Escuro (Clique para Tema Claro)' 
-      : 'Tema Claro (Clique para Tema Escuro)';
-  }
-}
-
-/**
- * Alterna o tema
- */
-function toggleTheme() {
-  if (window.gusThemeManager) {
-    window.gusThemeManager.toggleTheme();
-  } else {
-    // Fallback manual
-    state.theme = state.theme === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-theme', state.theme);
-    localStorage.setItem(CONFIG.storageKeys.theme, state.theme);
-    
-    updateState({ theme: state.theme });
-    updateThemeToggleUI();
-    
-    // Disparar evento
-    const event = new CustomEvent('themeChanged', { 
-      detail: { theme: state.theme }
-    });
-    document.dispatchEvent(event);
-    
-    console.log(`🎨 Tema alternado manualmente para: ${state.theme}`);
-  }
+  */
 }
 
 // ============================================
-// 7. SISTEMA DE LOADING
+// 8. SISTEMA GLOBAL DE FEEDBACK
 // ============================================
 
 /**
- * Cria o overlay de loading
+ * Mostra overlay de loading global
+ * @param {string} message - Mensagem opcional
+ */
+function showLoading(message = 'Processando...') {
+  updateState({ isLoading: true });
+  
+  if (!DOM.loadingOverlay) {
+    createLoadingOverlay();
+  }
+  
+  if (DOM.loadingText && message) {
+    DOM.loadingText.textContent = message;
+  }
+  
+  if (DOM.loadingOverlay) {
+    DOM.loadingOverlay.style.display = 'flex';
+    DOM.loadingOverlay.setAttribute('aria-hidden', 'false');
+  }
+  
+  // Disparar evento
+  const event = new CustomEvent('loadingStateChanged', { 
+    detail: { isLoading: true, message }
+  });
+  document.dispatchEvent(event);
+  
+  console.log(`⏳ Loading: ${message}`);
+}
+
+/**
+ * Esconde overlay de loading
+ */
+function hideLoading() {
+  updateState({ isLoading: false });
+  
+  if (DOM.loadingOverlay) {
+    DOM.loadingOverlay.style.display = 'none';
+    DOM.loadingOverlay.setAttribute('aria-hidden', 'true');
+  }
+  
+  // Disparar evento
+  const event = new CustomEvent('loadingStateChanged', { 
+    detail: { isLoading: false }
+  });
+  document.dispatchEvent(event);
+  
+  console.log('✅ Loading finalizado');
+}
+
+/**
+ * Cria o overlay de loading se não existir
  */
 function createLoadingOverlay() {
   if (document.getElementById('global-loading-overlay')) {
@@ -562,9 +618,8 @@ function createLoadingOverlay() {
   overlay.appendChild(content);
   document.body.appendChild(overlay);
   
-  // Adicionar estilos CSS
+  // Adicionar estilos CSS mínimos
   const style = document.createElement('style');
-  style.id = 'loading-styles';
   style.textContent = `
     .global-loading-overlay {
       position: fixed;
@@ -576,7 +631,7 @@ function createLoadingOverlay() {
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: var(--z-modal, 9999);
+      z-index: 9999;
       backdrop-filter: blur(4px);
     }
     
@@ -619,59 +674,11 @@ function createLoadingOverlay() {
 }
 
 /**
- * Mostra o loading
- */
-function showLoading(message = 'Processando...') {
-  if (!DOM.loadingOverlay) {
-    createLoadingOverlay();
-  }
-  
-  state.isLoading = true;
-  
-  if (DOM.loadingText && message) {
-    DOM.loadingText.textContent = message;
-  }
-  
-  if (DOM.loadingOverlay) {
-    DOM.loadingOverlay.style.display = 'flex';
-    DOM.loadingOverlay.setAttribute('aria-hidden', 'false');
-  }
-  
-  // Disparar evento
-  const event = new CustomEvent('loadingStateChanged', { 
-    detail: { isLoading: true, message }
-  });
-  document.dispatchEvent(event);
-  
-  console.log(`⏳ Loading: ${message}`);
-}
-
-/**
- * Esconde o loading
- */
-function hideLoading() {
-  state.isLoading = false;
-  
-  if (DOM.loadingOverlay) {
-    DOM.loadingOverlay.style.display = 'none';
-    DOM.loadingOverlay.setAttribute('aria-hidden', 'true');
-  }
-  
-  // Disparar evento
-  const event = new CustomEvent('loadingStateChanged', { 
-    detail: { isLoading: false }
-  });
-  document.dispatchEvent(event);
-  
-  console.log('✅ Loading finalizado');
-}
-
-// ============================================
-// 8. SISTEMA DE NOTIFICAÇÕES (TOASTS)
-// ============================================
-
-/**
  * Mostra uma notificação toast
+ * @param {string} message - Mensagem a ser exibida
+ * @param {string} type - Tipo: 'success', 'error', 'warning', 'info'
+ * @param {number} duration - Duração em ms (0 = sem auto-dismiss)
+ * @returns {string} - ID do toast
  */
 function showToast(message, type = 'info', duration = 5000) {
   if (!DOM.toastContainer) {
@@ -747,19 +754,6 @@ function showToast(message, type = 'info', duration = 5000) {
 }
 
 /**
- * Retorna a cor do toast baseada no tipo
- */
-function getToastColor(type) {
-  const colors = {
-    success: '#10b981',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6'
-  };
-  return colors[type] || colors.info;
-}
-
-/**
  * Fecha um toast
  */
 function dismissToast(toastElement) {
@@ -774,17 +768,30 @@ function dismissToast(toastElement) {
   }, 300);
 }
 
+/**
+ * Retorna a cor do toast baseada no tipo
+ */
+function getToastColor(type) {
+  const colors = {
+    success: '#10b981',
+    error: '#ef4444',
+    warning: '#f59e0b',
+    info: '#3b82f6'
+  };
+  return colors[type] || colors.info;
+}
+
 // ============================================
-// 9. EVENT LISTENERS
+// 9. LISTENERS GLOBAIS E UX
 // ============================================
 
 /**
- * Configura todos os event listeners
+ * Configura todos os event listeners globais
  */
 function initEventListeners() {
   console.log('🔌 Configurando event listeners...');
   
-  // Navegação via menu lateral
+  // 1. Navegação via menu lateral
   DOM.menuLinks?.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -795,27 +802,21 @@ function initEventListeners() {
     });
   });
   
-  // Alternar tema
+  // 2. Alternar tema
   if (DOM.themeToggle) {
     DOM.themeToggle.addEventListener('click', (e) => {
       e.preventDefault();
       toggleTheme();
-      
-      // Feedback visual
-      DOM.themeToggle.classList.add('animating');
-      setTimeout(() => {
-        DOM.themeToggle.classList.remove('animating');
-      }, 300);
     });
   }
   
-  // Atalhos de teclado
+  // 3. Atalhos de teclado
   document.addEventListener('keydown', handleKeyboardShortcuts);
   
-  // Navegação por hash
+  // 4. Navegação por hash
   window.addEventListener('hashchange', handleHashChange);
   
-  // Prevenir drag & drop padrão do navegador
+  // 5. Prevenção padrão de drag & drop
   document.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -826,7 +827,7 @@ function initEventListeners() {
     e.stopPropagation();
   });
   
-  // Botão Limpar Tudo (Merge)
+  // 6. Botão Limpar Tudo (Merge)
   if (DOM.clearAllBtn) {
     DOM.clearAllBtn.addEventListener('click', () => {
       if (state.pdfs.length > 0) {
@@ -835,14 +836,6 @@ function initEventListeners() {
           showToast('Todos os arquivos foram removidos', 'info', 3000);
         }
       }
-    });
-  }
-  
-  // Botão Limpar (Split)
-  if (DOM.splitClearBtn) {
-    DOM.splitClearBtn.addEventListener('click', () => {
-      // Implementar lógica de limpar split
-      showToast('Funcionalidade em desenvolvimento', 'info', 2000);
     });
   }
   
@@ -862,12 +855,14 @@ function handleKeyboardShortcuts(e) {
   if (e.ctrlKey && e.key === 'm') {
     e.preventDefault();
     switchView('merge');
+    showToast('Alternado para Unir PDFs', 'info', 1000);
   }
   
   // Ctrl+S para Split
   if (e.ctrlKey && e.key === 's') {
     e.preventDefault();
     switchView('split');
+    showToast('Alternado para Dividir PDF', 'info', 1000);
   }
   
   // Ctrl+T para alternar tema
@@ -878,16 +873,46 @@ function handleKeyboardShortcuts(e) {
   
   // Esc para limpar seleção/fechar modais
   if (e.key === 'Escape') {
-    // Pode ser usado para fechar modais, toasts, etc.
     const activeModal = document.querySelector('.modal.show');
     if (activeModal) {
       activeModal.remove();
+      showToast('Modal fechado', 'info', 1000);
     }
+    
+    // Fechar todos os toasts
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => dismissToast(toast));
   }
 }
 
+/**
+ * Alterna o tema
+ */
+function toggleTheme() {
+  if (window.gusThemeManager) {
+    window.gusThemeManager.toggleTheme();
+    updateState({ theme: window.gusThemeManager.resolvedTheme });
+  } else {
+    // Fallback manual
+    const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+    updateState({ theme: newTheme });
+    document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem(CONFIG.storageKeys.theme, newTheme);
+    
+    // Disparar evento
+    const event = new CustomEvent('themeChanged', { 
+      detail: { theme: newTheme }
+    });
+    document.dispatchEvent(event);
+    
+    showToast(`Tema alterado para ${newTheme === 'dark' ? 'Escuro' : 'Claro'}`, 'info', 2000);
+  }
+  
+  console.log(`🎨 Tema alternado para: ${state.theme}`);
+}
+
 // ============================================
-// 10. INICIALIZAÇÃO DA APLICAÇÃO
+// 10. INICIALIZAÇÃO (BOOTSTRAPPING)
 // ============================================
 
 /**
@@ -897,25 +922,22 @@ function initApp() {
   console.log('🚀 Inicializando Gus Docs...');
   
   try {
-    // 1. Cachear elementos DOM
+    // 1. Cachear elementos essenciais do DOM
     cacheDOMElements();
     
-    // 2. Inicializar tema
-    initTheme();
+    // 2. Inicializar integração com módulos
+    initModulesIntegration();
     
     // 3. Configurar event listeners
     initEventListeners();
     
-    // 4. Verificar hash da URL
+    // 4. Verificar hash da URL para carregar aba correta
     handleHashChange();
     
-    // 5. Criar overlay de loading
-    createLoadingOverlay();
+    // 5. Marcar como inicializado
+    updateState({ isInitialized: true });
     
-    // 6. Marcar como inicializado
-    state.isInitialized = true;
-    
-    // 7. Disparar evento de inicialização
+    // 6. Disparar evento de inicialização
     setTimeout(() => {
       document.dispatchEvent(new CustomEvent('appReady', {
         detail: { 
@@ -929,7 +951,8 @@ function initApp() {
       console.log('📊 Estado inicial:', {
         theme: state.theme,
         view: state.currentView,
-        pdfCount: state.pdfs.length
+        pdfCount: state.pdfs.length,
+        isReady: state.isInitialized
       });
       
       // Mostrar mensagem de boas-vindas
@@ -955,6 +978,8 @@ export {
   removePdf,
   clearPdfs,
   updateFileStats,
+  validatePdfFile,
+  extractFileInfo,
   formatFileSize,
   toggleTheme,
   showLoading,
@@ -978,12 +1003,14 @@ window.app = {
   removePdf,
   clearPdfs,
   updateFileStats,
+  
+  // Validação
+  validatePdfFile,
+  extractFileInfo,
   formatFileSize,
   
   // Tema
   toggleTheme,
-  initTheme,
-  updateThemeToggleUI,
   
   // UI
   showLoading,
@@ -1023,43 +1050,30 @@ if (document.readyState === 'loading') {
 // ============================================
 
 /**
- * Valida um arquivo PDF
+ * Função utilitária para debounce
  */
-export function validatePdfFile(file) {
-  if (!file) return { valid: false, error: 'Arquivo inválido' };
-  
-  // Verificar tipo
-  const isValidType = CONFIG.supportedFileTypes.some(type => 
-    file.name.toLowerCase().endsWith(type.toLowerCase())
-  );
-  
-  if (!isValidType) {
-    return { 
-      valid: false, 
-      error: `Tipo de arquivo não suportado. Use: ${CONFIG.supportedFileTypes.join(', ')}` 
+export function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
     };
-  }
-  
-  // Verificar tamanho
-  if (file.size > CONFIG.maxFileSize) {
-    return { 
-      valid: false, 
-      error: `Arquivo muito grande (max: ${formatFileSize(CONFIG.maxFileSize)})` 
-    };
-  }
-  
-  return { valid: true, error: null };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 /**
- * Extrai informações básicas de um arquivo
+ * Função utilitária para throttle
  */
-export function extractFileInfo(file) {
-  return {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    lastModified: file.lastModified,
-    path: file.path || file.name
+export function throttle(func, limit) {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
   };
 }
