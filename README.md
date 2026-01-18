@@ -1,9 +1,9 @@
-# 🦜 Gus Docs
+# 🦜 DocHub
 **Hub de Produtividade PDF Offline & Seguro**
 
 > "Frontend Burro / Backend Inteligente"
 
-O **Gus Docs** é uma aplicação desktop focada na manipulação, organização e padronização de arquivos PDF. Projetado para ambientes que exigem alta privacidade e eficiência (como setores jurídicos e administrativos), o software opera **100% offline**, garantindo que nenhum dado sensível deixe a máquina do usuário [3, 6].
+O **DocHub** é uma aplicação desktop focada na manipulação, organização e padronização de arquivos PDF. Projetado para ambientes que exigem alta privacidade e eficiência (como setores jurídicos e administrativos), o software opera **100% offline**, garantindo que nenhum dado sensível deixe a máquina do usuário [3, 6].
 
 A arquitetura combina a flexibilidade de interface do **Electron** com a performance e segurança de memória do **Rust** [3].
 
@@ -298,14 +298,14 @@ export const GLOBAL_CONSTANTS = Object.freeze({
 
 ```javascript
 // scripts/core/app.js
-class GusDocsApp {
+class DocHubApp {
   static #instance = null;
   
   static getInstance() {
-    if (!GusDocsApp.#instance) {
-      GusDocsApp.#instance = new GusDocsApp();
+    if (!DocHubApp.#instance) {
+      DocHubApp.#instance = new DocHubApp();
     }
-    return GusDocsApp.#instance;
+    return DocHubApp.#instance;
   }
   
   constructor() {
@@ -314,7 +314,7 @@ class GusDocsApp {
 }
 
 // Export para uso controlado
-export const app = GusDocsApp.getInstance();
+export const app = DocHubApp.getInstance();
 ```
 
 ---
