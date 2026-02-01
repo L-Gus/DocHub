@@ -1,0 +1,43 @@
+[app]
+name = "DocHub Backend"
+version = "0.1.0"
+description = "Hub de Produtividade PDF Offline & Seguro"
+debug = false
+
+[server]
+host = "127.0.0.1"
+port = 8080
+max_operation_time = 300
+max_file_size_mb = 100
+max_concurrent_operations = 5
+
+[files]
+temp_dir = "/tmp/dochub"
+output_dir = "./output"
+allowed_extensions = ["pdf"]
+max_files_per_operation = 10
+
+[pdf]
+default_quality = "high"
+enable_optimization = true
+max_pages_per_file = 1000
+
+[logging]
+level = "info"
+format = "text"
+file_enabled = true
+console_enabled = true
+
+[performance]
+worker_threads = 4
+memory_limit_mb = 1024
+cpu_limit_percent = 80
+
+[security]
+enable_sandbox = true
+allowed_paths = ["./"]
+timeout_seconds = 60
+
+[environment]
+development = true
+production = false

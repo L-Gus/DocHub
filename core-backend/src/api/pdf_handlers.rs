@@ -1,6 +1,7 @@
 use crate::processors::pdf_validator;
-use serde_json::Value;
+use serde_json::{Value, json};
 
-pub fn handle_validate(data: Value) -> Value {
-    pdf_validator::validate_pdf(data)
+pub async fn handle_validate(data: Value) -> Value {
+    // TODO: Implement actual validation
+    json!({"status": "not_implemented"})
 }
