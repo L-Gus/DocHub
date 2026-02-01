@@ -1,26 +1,85 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DocHub</title>
-  <link rel="stylesheet" href="src/styles/main.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocHub - Hub de Produtividade PDF Offline & Seguro</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="assets/favicon.ico">
+
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="src/styles/main.css">
 </head>
-<body>
-  <div id="app">
-    <header>
-      <h1>DocHub</h1>
-      <nav>
-        <a href="#/">Home</a>
-        <a href="#/merge">Mesclar</a>
-        <a href="#/split">Dividir</a>
-        <a href="#/settings">Configurações</a>
-      </nav>
-    </header>
-    <main>
-      <div id="router-view"></div>
+
+<body data-theme="dark">
+<div class="app-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo-section">
+            <div class="logo-icon">📄</div>
+            <div>
+                <h1 class="app-name">DocHub</h1>
+                <p class="app-version">v1.0.0</p>
+            </div>
+        </div>
+
+        <nav class="main-menu">
+            <a class="menu-link active" data-view="merge" href="#/merge">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span>Mesclar PDFs</span>
+            </a>
+            <a class="menu-link" data-view="split" href="#/split">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+                    <path d="M9 13h6v2H9zm0-4h6v2H9z"/>
+                </svg>
+                <span>Dividir PDF</span>
+            </a>
+            <a class="menu-link" data-view="settings" href="#/settings">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+                <span>Configurações</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="system-status">
+                <span class="status-indicator"></span>
+                <span>Sistema operacional</span>
+            </div>
+            <button id="theme-toggle" class="theme-toggle" title="Alternar tema">
+                <span class="theme-toggle-icon" id="theme-icon">🌙</span>
+                <span class="theme-toggle-label" id="theme-label">Tema escuro</span>
+            </button>
+            <span class="privacy-badge">100% offline & seguro</span>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div id="router-view"></div>
     </main>
-  </div>
-  <script type="module" src="src/core/app.js"></script>
+
+    <!-- Containers para overlays -->
+    <div id="toast-container"></div>
+    <div id="modal-container"></div>
+
+    <!-- Input principal de arquivo (hidden) -->
+    <input type="file" id="main-file-input" accept=".pdf" multiple hidden>
+
+</div>
+
+<!-- Scripts -->
+<script type="module" src="src/core/app.js"></script>
 </body>
 </html>

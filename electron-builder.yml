@@ -9,6 +9,8 @@ files:
   - package.json
 win:
   target: nsis
+  certificateFile: null
+  certificatePassword: null
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

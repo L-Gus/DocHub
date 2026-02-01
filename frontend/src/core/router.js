@@ -15,8 +15,13 @@ export class Router {
   }
 
   init() {
+    console.log('🚀 Inicializando router...');
     this.navigate('/');
-    window.addEventListener('hashchange', () => this.handleHashChange());
+    window.addEventListener('hashchange', () => {
+      console.log('📍 Hash mudou para:', window.location.hash);
+      this.handleHashChange();
+    });
+    console.log('✅ Router inicializado');
   }
 
   handleHashChange() {
@@ -25,13 +30,26 @@ export class Router {
   }
 
   navigate(path) {
+    console.log('🔄 Navegando para:', path);
     const ViewClass = this.routes[path];
     if (ViewClass) {
-      if (this.currentView) {
-        this.currentView.destroy();
+      try {
+        if (this.currentView && typeof this.currentView.destroy === 'function') {
+          this.currentView.destroy();
+        }
+        console.log('📦 Criando view:', ViewClass.name);
+        this.currentView = new ViewClass();
+        if (typeof this.currentView.render === 'function') {
+          this.currentView.render();
+          console.log('✅ View renderizada:', ViewClass.name);
+        } else {
+          console.error('❌ View não tem método render:', ViewClass.name);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao navegar para', path, ':', error);
       }
-      this.currentView = new ViewClass();
-      this.currentView.render();
+    } else {
+      console.warn('⚠️ Rota não encontrada:', path);
     }
   }
 }
