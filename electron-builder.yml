@@ -1,0 +1,14 @@
+appId: com.dochub.app
+productName: DocHub
+directories:
+  output: dist
+files:
+  - frontend/**/*
+  - core-backend/target/release/**/*
+  - node_modules/**/*
+  - package.json
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

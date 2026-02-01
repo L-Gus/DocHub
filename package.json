@@ -1,0 +1,36 @@
+{
+  "name": "dochub",
+  "version": "1.0.0",
+  "description": "Hub de Produtividade PDF Offline & Seguro",
+  "main": "frontend/src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "node scripts/dev.js",
+    "build": "node scripts/build.js",
+    "package": "node scripts/package.js"
+  },
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.dochub.app",
+    "productName": "DocHub",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "frontend/**/*",
+      "core-backend/target/release/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,5 @@
+D:\git-hub\DocHub\target\release\build\serde_core-8565c262dd455c1e\build_script_build-8565c262dd455c1e.d: C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\build.rs
+
+D:\git-hub\DocHub\target\release\build\serde_core-8565c262dd455c1e\build_script_build-8565c262dd455c1e.exe: C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\build.rs
+
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_core-1.0.228\build.rs:

@@ -1,0 +1,13 @@
+D:\git-hub\DocHub\target\release\deps\pom-0c2d753c24bb7073.d: C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\lib.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\range.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\result.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\set.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\parser.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\char_class.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\utf8.rs
+
+D:\git-hub\DocHub\target\release\deps\libpom-0c2d753c24bb7073.rlib: C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\lib.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\range.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\result.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\set.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\parser.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\char_class.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\utf8.rs
+
+D:\git-hub\DocHub\target\release\deps\libpom-0c2d753c24bb7073.rmeta: C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\lib.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\range.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\result.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\set.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\parser.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\char_class.rs C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\utf8.rs
+
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\lib.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\range.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\result.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\set.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\parser.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\char_class.rs:
+C:\Users\pir4p\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\pom-3.4.0\src\utf8.rs:

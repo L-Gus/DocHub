@@ -1,0 +1,14 @@
+{
+  "name": "dochub-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for DocHub PDF manipulation app",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^25.0.0"
+  }
+}

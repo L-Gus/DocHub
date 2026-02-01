@@ -1,0 +1,2 @@
+// Test setup
+global.test = () => {};
